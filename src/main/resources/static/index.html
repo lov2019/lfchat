@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LFCHAT</title>
+    <script src="/jquery.js"></script>
+    <script>
+        var logined = false;
+        var username = "";
+        var isuploading = false;
+        function login() {
+            username = document.getElementById("username").value;
+            if (username == "") {
+                alert("用户名为空!");
+            } else {
+                logined = true;
+                document.getElementById("chatDisplay").innerHTML = "<span>登录成功</span>";
+                setInterval(update, 2000);
+            }
+        }
+        function send() {
+            if (!logined) {
+                alert("你还没有登录!");
+                return;
+            }
+            $.ajax({
+                url: "/sendmsg",
+                method: "POST",
+                data: {
+                    username: username,
+                    chatdata: document.getElementById("chat").value
+                },
+                success: function () {
+                    update();
+                }
+            });
+        }
+        function update() {
+            $.ajax({
+                url: "/getmsg",
+                method: "GET",
+                success: function (data) {
+                    document.getElementById("chatDisplay").innerHTML = data;
+                }
+            });
+        }
+        var fileInput;
+        function upload() {
+            
+            if (isuploading) {
+                alert("当前有上传任务");
+                return;
+            }
+            isuploading = true;
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function () {
+                    $.ajax({
+                            url: "/cf",
+                            method: "POST",
+                            success: function () {
+                            }
+                        });
+                    const base64String = reader.result;
+                    console.log("文件大小:", base64String.length);
+                    var chunks = [];
+                    for (var i = 0; i < base64String.length; i+=1024) {
+                        chunks[i / 1024] = base64String.substring(i, i + 1024);
+                    }
+                    var c = 0;
+                    let size = chunks.length;
+                    chunks.forEach(element => {
+                        $.ajax({
+                            url: "/upload",
+                            method: "POST",
+                            data: {
+                                count: c.toString(),
+                                data: element
+                            },
+                            success: function () {
+                                console.log("上传成功");
+                            }
+                        });
+                        c++;
+                        //document.getElementById("chatDisplay").innerHTML = "上传文件..." + c.toString() + "/" + size.toString();
+                    });
+                    alert("文件上传成功");
+                };
+                reader.onerror = function (error) {
+                    console.error('Error: ', error);
+                };
+            } else {
+                alert("请先选择一个文件");
+            }
+            isuploading = false;
+        }
+        function uploads() {
+            setTimeout(upload, 0);
+        }
+    </script>
+    <style>
+        .controller {
+            border-style: dotted;
+            width: 100%;
+            height: 200px;
+        }
+
+        .chatDisplay {
+            border-style: dotted;
+            width: 100%;
+            height: calc(100vh - 200px);
+        }
+
+        button {
+            width: 100px;
+            height: 50px;
+            -webkit-transition-duration: 0.25s;
+            transition-duration: 0.25s;
+            border-color: blue;
+            background-color: white;
+            box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+        }
+
+        button:active {
+            background-color: blue;
+            color: white;
+            box-shadow: 0 8px 16px 0 rgb(0, 255, 34), 0 6px 20px 0 rgb(60, 255, 0);
+        }
+
+        input {
+            height: 50px;
+            -webkit-transition-duration: 0.25s;
+
+            transition-duration: 0.25s;
+        }
+
+        input:active {
+            background-color: black;
+            color: white;
+        }
+
+        div {
+            -webkit-transition-duration: 1s;
+            transition-duration: 1s;
+            overflow: auto;
+        }
+
+        div:active {
+            background-color: greenyellow;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="controller">
+        <span>聊天信息</span>
+        <input type="text" id="chat">
+        <button onclick="send()">发送</button>
+        <br>
+        <input type="file" id="fileUpLoader">
+        <button id="uploadbtn">上传</button>
+    </div>
+    <div class="chatDisplay" id="chatDisplay">
+        <span>用户名</span>
+        <input type="text" id="username">
+        <button onclick="login()">登录</button>
+    </div>
+    <script>
+        fileInput = document.getElementById('fileUpLoader');
+        $("#uploadbtn").click(uploads);
+    </script>
+</body>
+
+</html>
